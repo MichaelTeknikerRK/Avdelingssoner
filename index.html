@@ -2,375 +2,450 @@
 <html lang="no">
 <head>
 <meta charset="UTF-8">
-<title>Hjemmetjenesten – Avdelingsoversikt Mo i Rana</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#1B2B3A">
+<title>Hjemmetjenesten · Mo i Rana</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+
 <style>
-  @page { size: A4 landscape; margin: 8mm; }
+/* ── TOKENS ─────────────────────────────────────────────── */
+:root {
+  --navy:    #1B2B3A;
+  --navy-lt: #263d52;
+  --surface: #ffffff;
+  --bg:      #F4F6F8;
+  --txt:     #0f1923;
+  --muted:   #6b7c8d;
+  --border:  #dde2e8;
+  --radius:  12px;
+  --header-h: 52px;
+  --dock-h:   56px;
+  --shadow:   0 4px 20px rgba(0,0,0,0.12);
+  --shadow-sm: 0 2px 8px rgba(0,0,0,0.10);
+  font-family: 'DM Sans', system-ui, sans-serif;
+}
 
-  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+/* ── RESET ───────────────────────────────────────────────── */
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+html, body { width:100%; height:100%; overflow:hidden; background:var(--navy); }
 
-  html, body {
-    width: 100%;
-    height: 100%;
-    background: white;
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+/* ── HEADER ─────────────────────────────────────────────── */
+#header {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: var(--header-h);
+  background: var(--navy);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  z-index: 1001;
+  gap: 12px;
+}
+.app-title { display:flex; flex-direction:column; line-height:1.1; }
+.app-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: #fff;
+  letter-spacing: -0.2px;
+}
+.app-sub {
+  font-size: 10px;
+  font-weight: 400;
+  color: rgba(255,255,255,0.55);
+  letter-spacing: 0.4px;
+}
+
+#locate-btn {
+  width: 38px; height: 38px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.10);
+  border: 1px solid rgba(255,255,255,0.15);
+  color: #fff;
+  font-size: 17px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.15s;
+  flex-shrink: 0;
+}
+#locate-btn:hover { background: rgba(255,255,255,0.20); }
+
+#legend-toggle-btn {
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 17px;
+  background: rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,255,255,0.18);
+  color: #fff;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s;
+  flex-shrink: 0;
+}
+#legend-toggle-btn:hover { background: rgba(255,255,255,0.22); }
+
+/* ── MAP ─────────────────────────────────────────────────── */
+#map {
+  position: fixed;
+  top: var(--header-h);
+  left: 0; right: 0;
+  bottom: var(--dock-h);
+}
+
+/* ── ZONE DOCK ───────────────────────────────────────────── */
+#zone-dock {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  height: var(--dock-h);
+  background: var(--navy);
+  border-top: 1px solid rgba(255,255,255,0.08);
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  z-index: 1001;
+}
+#zone-dock::-webkit-scrollbar { display:none; }
+
+.zone-pill {
+  height: 32px;
+  border-radius: 16px;
+  border: 1.5px solid rgba(255,255,255,0.15);
+  padding: 0 11px 0 8px;
+  display: flex; align-items: center; gap: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #fff;
+  transition: opacity 0.15s, transform 0.1s;
+  flex-shrink: 0;
+  user-select: none;
+}
+.zone-pill:hover { transform: scale(1.04); }
+.zone-pill.inactive { opacity: 0.28; }
+
+.zone-pill-dot {
+  width: 9px; height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+/* ── LEAFLET OVERRIDES ───────────────────────────────────── */
+.leaflet-control-zoom {
+  border: none !important;
+  box-shadow: var(--shadow-sm) !important;
+  border-radius: 10px !important;
+  overflow: hidden;
+  margin-right: 12px !important;
+  margin-bottom: calc(var(--dock-h) + 12px) !important;
+}
+.leaflet-control-zoom a {
+  width: 36px !important; height: 36px !important;
+  line-height: 36px !important;
+  font-size: 18px !important;
+  color: var(--navy) !important;
+  font-weight: 700 !important;
+}
+.leaflet-control-attribution {
+  font-size: 9px !important;
+  background: rgba(255,255,255,0.75) !important;
+}
+/* Custom popup */
+.leaflet-popup-content-wrapper {
+  border-radius: 10px !important;
+  padding: 0 !important;
+  overflow: hidden;
+  box-shadow: var(--shadow) !important;
+  min-width: 180px;
+}
+.leaflet-popup-content { margin: 0 !important; width: auto !important; }
+.leaflet-popup-tip-container { margin-top: -1px; }
+
+.popup-header {
+  padding: 9px 14px 7px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.9);
+}
+.popup-body {
+  padding: 10px 14px 12px;
+  background: var(--surface);
+}
+.popup-num {
+  font-family: 'DM Mono', monospace;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--muted);
+  margin-bottom: 2px;
+}
+.popup-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--txt);
+  line-height: 1.25;
+  margin-bottom: 5px;
+}
+.popup-addr {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+/* ── LEGEND PANEL ────────────────────────────────────────── */
+#legend-panel {
+  position: fixed;
+  background: var(--surface);
+  overflow: hidden;
+  z-index: 1002;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+              opacity 0.3s ease;
+}
+
+/* MOBILE: bottom sheet */
+@media (max-width: 767px) {
+  #legend-panel {
+    left: 0; right: 0;
+    bottom: var(--dock-h);
+    border-radius: 16px 16px 0 0;
+    max-height: 72vh;
+    box-shadow: 0 -4px 24px rgba(0,0,0,0.16);
+    transform: translateY(100%);
+    opacity: 0;
   }
-
-  .page {
-    width: 281mm;
-    height: 194mm;
+  #legend-panel.open {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  .sheet-handle {
     display: flex;
-    flex-direction: column;
-    overflow: hidden;
-    background: white;
-  }
-
-  /* ── HEADER ── */
-  .header {
-    flex-shrink: 0;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 3.5mm 6mm 3mm;
-    border-bottom: 2.5px solid #111;
-    background: white;
-  }
-
-  .header-left h1 {
-    font-size: 13.5pt;
-    font-weight: 800;
-    letter-spacing: -0.4px;
-    color: #111;
-    line-height: 1;
-  }
-
-  .header-left .sub {
-    font-size: 7.5pt;
-    font-weight: 500;
-    color: #666;
-    margin-top: 1.5mm;
-    letter-spacing: 0.1px;
-  }
-
-  .header-right {
-    text-align: right;
-  }
-
-  .header-right .badge {
-    display: inline-block;
-    font-size: 7pt;
-    font-weight: 600;
-    color: #888;
-    border: 1px solid #ccc;
-    border-radius: 3px;
-    padding: 1px 5px;
-  }
-
-  /* ── MAP ── */
-  #map {
-    flex: 1;
-    min-height: 0;
-    width: 100%;
-    position: relative;
-  }
-
-  .leaflet-control-attribution {
-    font-size: 5pt !important;
-    padding: 1px 3px !important;
-    background: rgba(255,255,255,0.75) !important;
-  }
-
-  /* ── FOOTER ── */
-  .footer {
-    flex-shrink: 0;
-    background: #F5F6F7;
-    border-top: 1.5px solid #D8D8D8;
-    padding: 2.5mm 6mm 2.5mm;
-    display: flex;
-    align-items: flex-start;
-    gap: 5mm;
-  }
-
-  .footer-section-title {
-    font-size: 5.5pt;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.9px;
-    color: #555;
-    margin-bottom: 2mm;
-    white-space: nowrap;
-  }
-
-  /* Departments */
-  .dept-block { flex-shrink: 0; }
-
-  .dept-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    column-gap: 6mm;
-    row-gap: 1.8mm;
-  }
-
-  .dept-item {
-    display: flex;
-    align-items: center;
-    gap: 2.5mm;
-    font-size: 8pt;
-    font-weight: 500;
-    white-space: nowrap;
-    cursor: pointer;
-    border-radius: 3px;
-    padding: 1px 3px 1px 1px;
-    transition: opacity 0.15s, background 0.1s;
-    user-select: none;
-  }
-  .dept-item:hover { background: rgba(0,0,0,0.06); }
-  .dept-item.inactive { opacity: 0.32; }
-
-  .dept-swatch {
-    width: 13px;
-    height: 13px;
-    border-radius: 3px;
-    flex-shrink: 0;
-    border: 1px solid rgba(0,0,0,0.18);
-  }
-
-  /* Divider */
-  .vdivider {
-    width: 1px;
-    background: #D0D0D0;
-    align-self: stretch;
-    flex-shrink: 0;
-  }
-
-  /* Facilities */
-  .facility-block { flex: 1; min-width: 0; }
-
-  .facility-grid {
-    display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    gap: 1.6mm 3mm;
-  }
-
-  .facility-item {
-    display: flex;
-    align-items: flex-start;
-    gap: 2mm;
-    cursor: pointer;
-    border-radius: 3px;
-    padding: 1px 2px 1px 1px;
-    transition: opacity 0.15s, background 0.1s;
-    user-select: none;
-  }
-  .facility-item:hover { background: rgba(0,0,0,0.06); }
-  .facility-item.inactive { opacity: 0.32; }
-
-  .facility-num {
-    width: 15px;
-    height: 15px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
     justify-content: center;
-    font-size: 6.5pt;
-    font-weight: 700;
-    flex-shrink: 0;
-    border: 1px solid rgba(0,0,0,0.2);
-    margin-top: 0.3mm;
+    padding: 10px 0 4px;
+    cursor: grab;
   }
+  .sheet-handle::before {
+    content: '';
+    width: 36px; height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+  }
+}
 
-  .facility-name {
-    font-size: 6.8pt;
-    line-height: 1.25;
-    font-weight: 500;
-    color: #222;
+/* DESKTOP: floating right card */
+@media (min-width: 768px) {
+  #legend-panel {
+    top: calc(var(--header-h) + 12px);
+    right: 12px;
+    width: 290px;
+    max-height: calc(100vh - var(--header-h) - var(--dock-h) - 24px);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    transform: translateX(calc(100% + 16px));
+    opacity: 0;
   }
+  #legend-panel.open {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  .sheet-handle { display: none; }
+}
 
-  /* Print */
-  @media print {
-    .page { width: 281mm; height: 194mm; }
-    .leaflet-control-container { display: none !important; }
-    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-    #print-btn { display: none !important; }
+#legend-inner {
+  overflow-y: auto;
+  max-height: calc(72vh - 40px);
+  padding: 4px 0 20px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+@media (min-width: 768px) {
+  #legend-inner {
+    max-height: calc(100vh - var(--header-h) - var(--dock-h) - 24px - 40px);
   }
+}
 
-  /* Screen: toolbar overlay */
-  #toolbar {
-    position: fixed;
-    top: 10px; right: 10px;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 6px;
-    z-index: 9999;
-  }
-  #print-btn {
-    background: #111;
-    color: white;
-    border: none;
-    border-radius: 6px;
-    padding: 8px 16px;
-    font-family: Inter, sans-serif;
-    font-size: 12px;
-    font-weight: 600;
-    cursor: pointer;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-    white-space: nowrap;
-  }
-  #print-btn:hover { background: #333; }
-  #hint {
-    background: rgba(255,255,255,0.93);
-    border: 1px solid #ddd;
-    border-radius: 6px;
-    padding: 6px 10px;
-    font-family: Inter, sans-serif;
-    font-size: 10.5px;
-    color: #444;
-    box-shadow: 0 1px 5px rgba(0,0,0,0.12);
-    max-width: 230px;
-    text-align: right;
-    line-height: 1.5;
-  }
-  @media print {
-    #toolbar { display: none !important; }
-  }
+.legend-section-title {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.9px;
+  text-transform: uppercase;
+  color: var(--muted);
+  padding: 12px 16px 6px;
+}
+
+.legend-zone-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px;
+  cursor: pointer;
+  transition: background 0.1s, opacity 0.15s;
+  user-select: none;
+  border-radius: 6px;
+  margin: 0 6px;
+}
+.legend-zone-row:hover { background: var(--bg); }
+.legend-zone-row.inactive { opacity: 0.32; }
+
+.legend-zone-swatch {
+  width: 14px; height: 14px;
+  border-radius: 3px;
+  flex-shrink: 0;
+  border: 1px solid rgba(0,0,0,0.12);
+}
+.legend-zone-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--txt);
+  flex: 1;
+}
+.legend-zone-hint {
+  font-size: 10px;
+  color: var(--muted);
+  font-weight: 400;
+}
+
+.legend-divider {
+  height: 1px;
+  background: var(--border);
+  margin: 8px 16px;
+}
+
+.legend-fac-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 16px;
+  cursor: pointer;
+  transition: background 0.1s, opacity 0.15s;
+  user-select: none;
+  border-radius: 6px;
+  margin: 0 6px;
+}
+.legend-fac-row:hover { background: var(--bg); }
+.legend-fac-row.inactive { opacity: 0.32; }
+
+.legend-fac-num {
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'DM Mono', monospace;
+  font-size: 10px;
+  font-weight: 500;
+  color: #fff;
+  flex-shrink: 0;
+  border: 1.5px solid rgba(0,0,0,0.15);
+}
+.legend-fac-info { flex: 1; min-width: 0; }
+.legend-fac-name {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--txt);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.legend-fac-zone {
+  font-size: 10.5px;
+  color: var(--muted);
+  margin-top: 1px;
+}
+
+/* ── OVERLAY ─────────────────────────────────────────────── */
+#overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.35);
+  z-index: 999;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+}
+#overlay.show { opacity: 1; pointer-events: all; }
+
+/* ── LOCATE PULSE ────────────────────────────────────────── */
+.locate-pulse {
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  background: #3b82f6;
+  border: 3px solid white;
+  box-shadow: 0 0 0 4px rgba(59,130,246,0.3);
+  animation: pulse 2s infinite;
+}
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 0 4px rgba(59,130,246,0.3); }
+  50% { box-shadow: 0 0 0 8px rgba(59,130,246,0.1); }
+}
 </style>
 </head>
 <body>
 
-<div id="toolbar">
-  <button id="print-btn" onclick="window.print()">🖨 Skriv ut</button>
-  <div id="hint">Zoom og panorer til ønsket<br>utsnitt, deretter skriv ut.</div>
+<!-- HEADER -->
+<header id="header">
+  <div class="app-title">
+    <span class="app-name">Hjemmetjenesten</span>
+    <span class="app-sub">Avdelingskart · Mo i Rana</span>
+  </div>
+  <button id="locate-btn" title="Finn min posisjon">📍</button>
+  <button id="legend-toggle-btn">Forklaring</button>
+</header>
+
+<!-- MAP -->
+<div id="map"></div>
+
+<!-- ZONE DOCK -->
+<div id="zone-dock">
+  <!-- pills injected by JS -->
 </div>
 
-<div class="page">
-
-  <!-- HEADER -->
-  <div class="header">
-    <div class="header-left">
-      <h1>Hjemmetjenesten &mdash; Avdelingsoversikt</h1>
-      <div class="sub">Rana Kommune &nbsp;·&nbsp; Helse og omsorg &nbsp;·&nbsp; Mo i Rana</div>
-    </div>
-    <div class="header-right">
-      <span class="badge">Juni 2025</span>
-    </div>
+<!-- LEGEND PANEL -->
+<div id="legend-panel">
+  <div class="sheet-handle"></div>
+  <div id="legend-inner">
+    <div class="legend-section-title">Avdelinger</div>
+    <div id="legend-zones"></div>
+    <div class="legend-divider"></div>
+    <div class="legend-section-title">Omsorgsboliger</div>
+    <div id="legend-facs"></div>
   </div>
+</div>
 
-  <!-- MAP -->
-  <div id="map"></div>
-
-  <!-- FOOTER -->
-  <div class="footer">
-
-    <!-- Avdelinger legend -->
-    <div class="dept-block">
-      <div class="footer-section-title">Avdelinger</div>
-      <div class="dept-grid">
-        <div class="dept-item" data-zone="Vest 1">
-          <div class="dept-swatch" style="background:#A52714"></div>
-          <span>Vest 1</span>
-        </div>
-        <div class="dept-item" data-zone="Vest 3">
-          <div class="dept-swatch" style="background:#0288D1"></div>
-          <span>Vest 3</span>
-        </div>
-        <div class="dept-item" data-zone="Sør">
-          <div class="dept-swatch" style="background:#F9A825"></div>
-          <span>Sør</span>
-        </div>
-        <div class="dept-item" data-zone="Nord">
-          <div class="dept-swatch" style="background:#097138"></div>
-          <span>Nord</span>
-        </div>
-        <div class="dept-item" data-zone="Øst 1">
-          <div class="dept-swatch" style="background:#FFEA00; border-color:#bbb;"></div>
-          <span>Øst 1</span>
-        </div>
-        <div class="dept-item" data-zone="Sentrum 3">
-          <div class="dept-swatch" style="background:#9C27B0"></div>
-          <span>Sentrum 3</span>
-        </div>
-      </div>
-    </div>
-
-    <div class="vdivider"></div>
-
-    <!-- Omsorgsboliger -->
-    <div class="facility-block">
-      <div class="footer-section-title">Omsorgsboliger</div>
-      <div class="facility-grid">
-
-        <div class="facility-item" data-fac="1">
-          <div class="facility-num" style="background:#FFEA00; color:#fff; border-color:#aaa; text-shadow:-1px -1px 0 #555,1px -1px 0 #555,-1px 1px 0 #555,1px 1px 0 #555;">1</div>
-          <div class="facility-name">Gruben Bosenter</div>
-        </div>
-
-        <div class="facility-item" data-fac="2">
-          <div class="facility-num" style="background:#F9A825; color:#fff;">2</div>
-          <div class="facility-name">Hauknes Omsorgsbolig</div>
-        </div>
-
-        <div class="facility-item" data-fac="3">
-          <div class="facility-num" style="background:#0288D1; color:#fff;">3</div>
-          <div class="facility-name">Mjølan Omsorgsbolig</div>
-        </div>
-
-        <div class="facility-item" data-fac="4">
-          <div class="facility-num" style="background:#FFEA00; color:#fff; border-color:#aaa; text-shadow:-1px -1px 0 #555,1px -1px 0 #555,-1px 1px 0 #555,1px 1px 0 #555;">4</div>
-          <div class="facility-name">Mo Bo og Servicesenter</div>
-        </div>
-
-        <div class="facility-item" data-fac="5">
-          <div class="facility-num" style="background:#097138; color:#fff;">5</div>
-          <div class="facility-name">Selfors Omsorgsbolig</div>
-        </div>
-
-        <div class="facility-item" data-fac="6">
-          <div class="facility-num" style="background:#9C27B0; color:#fff;">6</div>
-          <div class="facility-name">Sentrumsgården Omsorgsbolig</div>
-        </div>
-
-        <div class="facility-item" data-fac="7">
-          <div class="facility-num" style="background:#097138; color:#fff;">7</div>
-          <div class="facility-name">Talvikparken Bosenter</div>
-        </div>
-
-        <div class="facility-item" data-fac="8">
-          <div class="facility-num" style="background:#A52714; color:#fff;">8</div>
-          <div class="facility-name">Utskarpen Bosenter</div>
-        </div>
-
-        <div class="facility-item" data-fac="9">
-          <div class="facility-num" style="background:#A52714; color:#fff;">9</div>
-          <div class="facility-name">Ytteren Bosenter</div>
-        </div>
-
-        <div class="facility-item" data-fac="10">
-          <div class="facility-num" style="background:#0288D1; color:#fff;">10</div>
-          <div class="facility-name">Ytteren Omsorgsbolig</div>
-        </div>
-
-      </div>
-    </div>
-
-  </div><!-- /footer -->
-</div><!-- /page -->
+<!-- OVERLAY (mobile backdrop) -->
+<div id="overlay" id="overlay"></div>
 
 <script>
-// ── ZONE COLORS (used for facility markers) ───────────────
+// ── DATA ──────────────────────────────────────────────────
 const ZONE_COLORS = {
-  'Vest 1':     '#A52714',
-  'Sør':        '#F9A825',
-  'Sentrum 3':  '#9C27B0',
-  'Vest 3':     '#0288D1',
-  'Nord':       '#097138',
-  'Øst 1':      '#FFEA00'
+  'Vest 1':    '#A52714',
+  'Sør':       '#F9A825',
+  'Øst 1':     '#FFEA00',
+  'Vest 3':    '#0288D1',
+  'Nord':      '#097138',
+  'Sentrum 3': '#9C27B0'
 };
 
-// ── ZONE POLYGONS (from KML, coords = [lat,lng]) ─────────
+const FACILITIES = [
+  { num:1,  lat:66.3185,  lng:14.1880, zone:'Øst 1',    name:'Gruben Bosenter',            addr:'Svaldbardgata 2' },
+  { num:2,  lat:66.28684, lng:14.05299,zone:'Sør',      name:'Hauknes Omsorgsbolig',        addr:'Nygata 111' },
+  { num:3,  lat:66.32954, lng:14.15393,zone:'Vest 3',   name:'Mjølan Omsorgsbolig',         addr:'Heggveien 7' },
+  { num:4,  lat:66.30933, lng:14.14029,zone:'Øst 1',    name:'Mo Bo og Servicesenter',      addr:'Kirkegata 14' },
+  { num:5,  lat:66.32942, lng:14.17571,zone:'Nord',     name:'Selfors Omsorgsbolig',        addr:'Selforsveien 71' },
+  { num:6,  lat:66.31050, lng:14.14278,zone:'Sentrum 3',name:'Sentrumsgården Omsorgsbolig', addr:'Per Hellerviks gate 11' },
+  { num:7,  lat:66.31233, lng:14.14088,zone:'Nord',     name:'Talvikparken Bosenter',       addr:'Bekkedalsveien 14' },
+  { num:8,  lat:66.29069, lng:13.57853,zone:'Vest 1',   name:'Utskarpen Bosenter',          addr:'Sjoneidveien 9, Utskarpen' },
+  { num:9,  lat:66.34109, lng:14.13898,zone:'Vest 1',   name:'Ytteren Bosenter',            addr:'Gammelveien 1G' },
+  { num:10, lat:66.34152, lng:14.13772,zone:'Vest 3',   name:'Ytteren Omsorgsbolig',        addr:'Gammelveien 1F' },
+];
+
 const ZONES = [
   {name:'Vest 1', coords:[[66.3368059,14.1631221],[66.3476839,14.2130626],[66.3635319,14.1875753],[66.3764499,14.2114066],[66.3761869,14.0373437],[66.3994822,13.9885928],[66.4113569,13.9552338],[66.3879239,13.9354866],[66.3645049,13.9512127],[66.3660929,13.8678008],[66.3797289,13.8516386],[66.3740179,13.797532],[66.3957129,13.7562896],[66.3883029,13.6507224],[66.4190639,13.611272],[66.4270259,13.6534964],[66.4365539,13.6554275],[66.4399319,13.6304982],[66.4533489,13.612097],[66.4579649,13.6267181],[66.4647809,13.6197681],[66.4524569,13.5440782],[66.4550179,13.526292],[66.4636329,13.4879396],[66.4427949,13.3977386],[66.4226909,13.3474601],[66.4086599,13.2952575],[66.3997329,13.25086],[66.3890189,13.2630441],[66.3797429,13.2243107],[66.3419409,13.2597771],[66.3409079,13.2223427],[66.3185879,13.1895494],[66.2946519,13.1960874],[66.3022019,13.2843164],[66.2504929,13.3194418],[66.2495569,13.3599572],[66.2415349,13.3688833],[66.2379389,13.4114558],[66.2658679,13.5446663],[66.2780259,13.5693865],[66.2901769,13.5700725],[66.2893489,13.5923888],[66.2912819,13.6030319],[66.2893489,13.6071519],[66.2875539,13.6304982],[66.2653149,13.5748796],[66.2542579,13.5714456],[66.2516309,13.5886128],[66.2409819,13.6219151],[66.2433339,13.6387383],[66.2426419,13.6452614],[66.2548109,13.6888638],[66.2538429,13.7080901],[66.2570229,13.7225102],[66.2572989,13.7479155],[66.2718089,13.7770988],[66.2676639,13.7846519],[66.2695989,13.7891149],[66.2760919,13.8193283],[66.2729149,13.8347774],[66.2756769,13.8728869],[66.2704279,13.9015542],[66.2775419,13.9135713],[66.2785089,13.9113393],[66.2876919,13.9113393],[66.2961819,13.9224974],[66.3030129,13.9389776],[66.3049449,13.9472167],[66.3039099,13.9497917],[66.3037719,13.9530537],[66.3057719,13.9624948],[66.3045989,13.9654129],[66.3043239,13.9685029],[66.3110829,13.9987162],[66.3066689,14.0153674],[66.3079799,14.0296156],[66.3094969,14.0299586],[66.3243909,14.0912423],[66.3276309,14.0994824],[66.3294229,14.1046324],[66.3289399,14.1099535],[66.3309999,14.1122445],[66.3314899,14.1245456],[66.3343839,14.1204256],[66.3352109,14.1224856],[66.3380929,14.1208606],[66.340344,14.128322],[66.3394487,14.1412823],[66.3368059,14.1631221]]},
   {name:'Sør', coords:[[66.3083235,14.1294244],[66.3053919,14.1088251],[66.3030463,14.1129449],[66.300804,14.1097692],[66.300528,14.1023878],[66.2937653,14.0887407],[66.2937999,14.0837625],[66.2906249,14.0738061],[66.2907112,14.0645364],[66.2892962,14.0554384],[66.2904006,14.0462545],[66.2893997,14.0427354],[66.2841185,14.0445379],[66.2833936,14.0423921],[66.2819091,14.0423063],[66.2801828,14.0338949],[66.2767299,14.0322641],[66.2730693,14.0150121],[66.2738981,14.0090898],[66.274537,13.992782],[66.2705653,13.9783624],[66.2642782,13.968921],[66.2607886,13.9676336],[66.2579205,13.9718393],[66.2570566,13.9670328],[66.2539807,13.9606813],[66.253324,13.9631704],[66.2557779,13.9713243],[66.2552249,13.9723543],[66.254119,13.9692644],[66.2531858,13.9707235],[66.2540844,13.975015],[66.2524599,13.97656],[66.24966,13.973985],[66.2477932,13.9612821],[66.2487612,13.960853],[66.2469635,13.954759],[66.2416388,13.9478925],[66.2407398,13.9411977],[66.238319,13.9290098],[66.2366589,13.9272932],[66.2351371,13.9154485],[66.2372815,13.909612],[66.2332,13.8824895],[66.2126201,13.9018619],[66.1939433,13.9341596],[66.1921417,13.9671186],[66.1979618,13.9846281],[66.1953151,13.9974964],[66.1981003,14.0244535],[66.1968533,14.0320066],[66.1999015,14.0457395],[66.1999015,14.0522626],[66.2041961,14.073892],[66.2007328,14.1034177],[66.2025337,14.116464],[66.2008713,14.1288236],[66.2017025,14.1659025],[66.1965761,14.1978315],[66.2275265,14.2728475],[66.2475858,14.322801],[66.2582315,14.3076948],[66.2799238,14.2050413],[66.2811668,14.2263273],[66.2919684,14.2345351],[66.2947756,14.1887238],[66.2996655,14.1360334],[66.301763,14.146661],[66.3051125,14.1340956],[66.3083235,14.1294244]]},
@@ -380,164 +455,173 @@ const ZONES = [
   {name:'Øst 1', coords:[[66.3216316,14.1780329],[66.3208591,14.1768652],[66.3190321,14.1746336],[66.3182737,14.1753202],[66.31786,14.1786676],[66.3183771,14.182015],[66.3180668,14.1833883],[66.3169291,14.1827017],[66.3155156,14.1850191],[66.3142743,14.179011],[66.3098605,14.1854483],[66.3077568,14.1866499],[66.305239,14.1819292],[66.305377,14.1741186],[66.3031354,14.1610714],[66.3019965,14.1473394],[66.2996561,14.1364264],[66.2951989,14.1860032],[66.2919684,14.2345351],[66.2811668,14.2263273],[66.2799238,14.2050413],[66.2586627,14.3073153],[66.2475858,14.322801],[66.1965761,14.1978315],[66.19285,14.197265],[66.185641,14.208502],[66.180701,14.235974],[66.162865,14.26942],[66.13229,14.254596],[66.116203,14.273396],[66.119085,14.311212],[66.110391,14.341964],[66.095561,14.528701],[66.132584,14.516297],[66.1481687,14.9174136],[66.1522214,14.9240219],[66.187177,14.8663437],[66.188882,14.807416],[66.2159928,14.726268],[66.2231916,14.6534836],[66.2406956,14.6594734],[66.2530724,14.7180283],[66.278073,14.703108],[66.306019,14.628316],[66.308141,14.542374],[66.31904,14.551235],[66.31683,14.568606],[66.321073,14.574839],[66.331338,14.560078],[66.338488,14.51775],[66.345336,14.498499],[66.3462221,14.4787323],[66.348242,14.477668],[66.343088,14.380218],[66.337358,14.335254],[66.3369572,14.3087018],[66.3346761,14.3028809],[66.3335168,14.2711588],[66.3292397,14.2667916],[66.3204562,14.2540579],[66.3199416,14.2488905],[66.3197716,14.2450964],[66.3219558,14.235088],[66.3237256,14.2245629],[66.3243921,14.2182647],[66.3242994,14.2013232],[66.3226327,14.1880038],[66.3218485,14.182575],[66.3216316,14.1780329]]}
 ];
 
-// ── OMSORGSBOLIGER (numbered 1–10, alphabetical) ─────────
-const FACILITIES = [
-  { num:1,  lat:66.3185,   lng:14.1880,   zone:'Øst 1',    name:'Gruben Bosenter'            },
-  { num:2,  lat:66.28684,  lng:14.05299,  zone:'Sør',       name:'Hauknes Omsorgsbolig'        },
-  { num:3,  lat:66.32954,  lng:14.15393,  zone:'Vest 3',    name:'Mjølan Omsorgsbolig'         },
-  { num:4,  lat:66.30933,  lng:14.14029,  zone:'Øst 1',    name:'Mo Bo og Servicesenter'      },
-  { num:5,  lat:66.32942,  lng:14.17571,  zone:'Nord',      name:'Selfors Omsorgsbolig'        },
-  { num:6,  lat:66.31050,  lng:14.14278,  zone:'Sentrum 3', name:'Sentrumsgården Omsorgsbolig' },
-  { num:7,  lat:66.31233,  lng:14.14088,  zone:'Nord',      name:'Talvikparken Bosenter'       },
-  { num:8,  lat:66.29069,  lng:13.57853,  zone:'Vest 1',    name:'Utskarpen Bosenter'          },
-  { num:9,  lat:66.34109,  lng:14.13898,  zone:'Vest 1',    name:'Ytteren Bosenter'            },
-  { num:10, lat:66.34152,  lng:14.13772,  zone:'Vest 3',    name:'Ytteren Omsorgsbolig'        },
-];
-
-// ── PLACE NAME LABELS (orientation) ──────────────────────
-const PLACE_LABELS = [
-  // Mo i Rana bynære nabolag
-  { name:'Mo sentrum',  lat:66.3108, lng:14.1375, size:'city' },
-  { name:'Ytteren',     lat:66.3410, lng:14.1285, size:'city' },
-  { name:'Båsmoen',     lat:66.3347, lng:14.1060, size:'city' },
-  { name:'Selfors',     lat:66.3271, lng:14.1860, size:'city' },
-  { name:'Gruben',      lat:66.3195, lng:14.1960, size:'city' },
-  { name:'Hauknes',     lat:66.2855, lng:14.0450, size:'city' },
-  { name:'Villen',      lat:66.2940, lng:14.0700, size:'city' },
-  { name:'Stormyra',    lat:66.3210, lng:14.1095, size:'city' },
-  // Bredere kommuneområde
-  { name:'Røssvoll',    lat:66.3637, lng:14.3026, size:'town' },
-  { name:'Skonseng',    lat:66.3561, lng:14.3399, size:'town' },
-  { name:'Storforshei', lat:66.4045, lng:14.5280, size:'town' },
-  { name:'Dunderland',  lat:66.4454, lng:14.8357, size:'town' },
-  { name:'Utskarpen',   lat:66.2925, lng:13.5760, size:'town' },
-  { name:'Dalselv',     lat:66.2506, lng:13.9770, size:'town' },
-  { name:'Bjerka',      lat:66.1490, lng:13.8360, size:'town' },
-];
-
-// ── INIT MAP (interactive) ────────────────────────────────
+// ── MAP INIT ─────────────────────────────────────────────
 const map = L.map('map', {
-  zoomControl: false,
-  attributionControl: true,
+  zoomControl: true,
   scrollWheelZoom: true,
-  doubleClickZoom: true,
-  touchZoom: true,
-  dragging: true,
-  keyboard: true
+  tap: true
 });
+map.setView([66.318, 14.145], 12);
 
-// Start view: fit all zones, then user can zoom/pan
-const zoneLayers = {};
-const allLatLngs = [];
-ZONES.forEach(zone => {
-  const color = ZONE_COLORS[zone.name];
-  const isYellow = zone.name === 'Øst 1';
-  const poly = L.polygon(zone.coords, {
-    fillColor: color,
-    color: isYellow ? '#ccc' : color,
-    weight: 1.5,
-    opacity: 0.9,
-    fillOpacity: 0.32
-  }).addTo(map).bindTooltip(zone.name, { sticky: true });
-  zoneLayers[zone.name] = poly;
-  allLatLngs.push(...zone.coords);
-});
-map.fitBounds(allLatLngs, { padding: [6, 6] });
-
-// ── FOOTER CLICK FILTERS ─────────────────────────────────
-// Zone toggles via footer avdeling items
-document.querySelectorAll('.dept-item[data-zone]').forEach(el => {
-  let active = true;
-  el.addEventListener('click', () => {
-    active = !active;
-    const zone = el.dataset.zone;
-    if (active) { map.addLayer(zoneLayers[zone]); el.classList.remove('inactive'); }
-    else        { map.removeLayer(zoneLayers[zone]); el.classList.add('inactive'); }
-  });
-});
-
-// Facility toggles via footer omsorgsbolig items
-document.querySelectorAll('.facility-item[data-fac]').forEach(el => {
-  let active = true;
-  el.addEventListener('click', () => {
-    active = !active;
-    const num = parseInt(el.dataset.fac);
-    if (active) { map.addLayer(facilityLayers[num]); el.classList.remove('inactive'); }
-    else        { map.removeLayer(facilityLayers[num]); el.classList.add('inactive'); }
-  });
-});
-
-// Light basemap (CartoDB Positron)
 L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
-  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
-  subdomains: 'abcd',
-  maxZoom: 19
+  attribution: '© <a href="https://www.openstreetmap.org/copyright">OSM</a> © <a href="https://carto.com">CARTO</a>',
+  subdomains: 'abcd', maxZoom: 19
 }).addTo(map);
 
-// ── PLACE NAME LABELS ─────────────────────────────────────
-PLACE_LABELS.forEach(p => {
-  const isCity = p.size === 'city';
-  const icon = L.divIcon({
-    html: `<div style="
-      font-family:Inter,system-ui,sans-serif;
-      font-size:${isCity ? '8px' : '7px'};
-      font-weight:${isCity ? '600' : '500'};
-      color:${isCity ? '#222' : '#555'};
-      text-shadow:
-        -1px -1px 0 rgba(255,255,255,0.95),
-         1px -1px 0 rgba(255,255,255,0.95),
-        -1px  1px 0 rgba(255,255,255,0.95),
-         1px  1px 0 rgba(255,255,255,0.95),
-         0    0   3px rgba(255,255,255,1);
-      white-space:nowrap;
-      pointer-events:none;
-      letter-spacing:0.15px;
-    ">${p.name}</div>`,
-    className: '',
-    iconAnchor: [25, 5]
-  });
-  L.marker([p.lat, p.lng], { icon, interactive: false }).addTo(map);
+// ── STATE ─────────────────────────────────────────────────
+const zoneLayers = {};
+const facLayers  = {};
+const zoneActive = {};
+const facActive  = {};
+
+// ── DRAW ZONES ────────────────────────────────────────────
+ZONES.forEach(z => {
+  const c = ZONE_COLORS[z.name];
+  const poly = L.polygon(z.coords, {
+    fillColor: c, color: z.name === 'Øst 1' ? '#ccc' : c,
+    weight: 1.8, opacity: 0.85, fillOpacity: 0.28
+  }).addTo(map);
+  poly.bindPopup(`<div class="popup-header" style="background:${c}">${z.name}</div>`);
+  zoneLayers[z.name] = poly;
+  zoneActive[z.name] = true;
 });
 
-// ── FACILITY MARKERS ──────────────────────────────────────
-const facilityLayers = {};
-FACILITIES.forEach(f => {
-  const color = ZONE_COLORS[f.zone];
-  const isYellow = f.zone === 'Øst 1';
-  const size = f.num === 10 ? 20 : 18;
-  const fontSize = f.num === 10 ? '7px' : '8px';
-  const textShadow = isYellow
-    ? '-1px -1px 0 #555, 1px -1px 0 #555, -1px 1px 0 #555, 1px 1px 0 #555'
-    : 'none';
-  const border = isYellow ? '1.5px solid #aaa' : '1.5px solid rgba(0,0,0,0.2)';
-  const icon = L.divIcon({
-    html: `<div style="
-      width:${size}px;height:${size}px;
-      border-radius:50%;
-      background:${color};
+// ── DRAW FACILITY MARKERS ─────────────────────────────────
+function makeMarkerIcon(f) {
+  const c = ZONE_COLORS[f.zone];
+  const isY = f.zone === 'Øst 1';
+  const shadow = isY ? '-1px -1px 0 #555,1px -1px 0 #555,-1px 1px 0 #555,1px 1px 0 #555' : 'none';
+  const sz = 26;
+  return L.divIcon({
+    html: `<div style="width:${sz}px;height:${sz}px;border-radius:50%;background:${c};
       display:flex;align-items:center;justify-content:center;
-      font-family:Inter,system-ui,sans-serif;
-      font-size:${fontSize};
-      font-weight:800;
-      color:#fff;
-      text-shadow:${textShadow};
-      border:${border};
-      box-shadow:0 1px 4px rgba(0,0,0,0.35);
-    ">${f.num}</div>`,
-    className: '',
-    iconSize: [size, size],
-    iconAnchor: [size/2, size/2]
+      font-family:'DM Mono',monospace;font-size:10px;font-weight:500;
+      color:#fff;text-shadow:${shadow};
+      border:2px solid ${isY?'#aaa':'rgba(0,0,0,0.18)'};
+      box-shadow:0 2px 6px rgba(0,0,0,0.3);">${f.num}</div>`,
+    className: '', iconSize: [sz,sz], iconAnchor: [sz/2,sz/2]
   });
-  const marker = L.marker([f.lat, f.lng], { icon })
+}
+
+FACILITIES.forEach(f => {
+  const c = ZONE_COLORS[f.zone];
+  const marker = L.marker([f.lat, f.lng], { icon: makeMarkerIcon(f) })
     .addTo(map)
-    .bindTooltip(`<strong>${f.num}. ${f.name}</strong>`, {
-      permanent: false,
-      direction: 'top'
-    });
-  facilityLayers[f.num] = marker;
+    .bindPopup(`
+      <div class="popup-header" style="background:${c}">${f.zone}</div>
+      <div class="popup-body">
+        <div class="popup-num">Nr. ${f.num}</div>
+        <div class="popup-name">${f.name}</div>
+        <div class="popup-addr">📍 ${f.addr}</div>
+      </div>`);
+  facLayers[f.num] = marker;
+  facActive[f.num] = true;
 });
 
+// ── BUILD ZONE DOCK ───────────────────────────────────────
+const dock = document.getElementById('zone-dock');
+Object.entries(ZONE_COLORS).forEach(([name, color]) => {
+  const pill = document.createElement('div');
+  pill.className = 'zone-pill';
+  pill.dataset.zone = name;
+  pill.style.background = `${color}22`;
+  pill.style.borderColor = `${color}66`;
+  pill.innerHTML = `<span class="zone-pill-dot" style="background:${color}${name==='Øst 1'?';border:1px solid #bbb':''}"></span>${name}`;
+  pill.addEventListener('click', () => toggleZone(name, pill));
+  dock.appendChild(pill);
+});
 
+function toggleZone(name, pill) {
+  zoneActive[name] = !zoneActive[name];
+  if (zoneActive[name]) { map.addLayer(zoneLayers[name]); pill.classList.remove('inactive'); }
+  else { map.removeLayer(zoneLayers[name]); pill.classList.add('inactive'); }
+  // Sync legend row
+  const row = document.querySelector(`.legend-zone-row[data-zone="${name}"]`);
+  if (row) row.classList.toggle('inactive', !zoneActive[name]);
+}
+
+function toggleFac(num, el) {
+  facActive[num] = !facActive[num];
+  if (facActive[num]) { map.addLayer(facLayers[num]); el.classList.remove('inactive'); }
+  else { map.removeLayer(facLayers[num]); el.classList.add('inactive'); }
+}
+
+// ── BUILD LEGEND ──────────────────────────────────────────
+const legendZones = document.getElementById('legend-zones');
+Object.entries(ZONE_COLORS).forEach(([name, color]) => {
+  const row = document.createElement('div');
+  row.className = 'legend-zone-row';
+  row.dataset.zone = name;
+  row.innerHTML = `
+    <div class="legend-zone-swatch" style="background:${color};${name==='Øst 1'?'border-color:#bbb;':''}"></div>
+    <span class="legend-zone-name">${name}</span>
+    <span class="legend-zone-hint">Sone</span>`;
+  row.addEventListener('click', () => {
+    const pill = document.querySelector(`.zone-pill[data-zone="${name}"]`);
+    toggleZone(name, pill);
+  });
+  legendZones.appendChild(row);
+});
+
+const legendFacs = document.getElementById('legend-facs');
+FACILITIES.forEach(f => {
+  const c = ZONE_COLORS[f.zone];
+  const isY = f.zone === 'Øst 1';
+  const shadow = isY ? '-1px -1px 0 #555,1px -1px 0 #555,-1px 1px 0 #555,1px 1px 0 #555' : 'none';
+  const row = document.createElement('div');
+  row.className = 'legend-fac-row';
+  row.dataset.fac = f.num;
+  row.innerHTML = `
+    <div class="legend-fac-num" style="background:${c};${isY?'border-color:#aaa;':''}">
+      <span style="text-shadow:${shadow}">${f.num}</span>
+    </div>
+    <div class="legend-fac-info">
+      <div class="legend-fac-name">${f.name}</div>
+      <div class="legend-fac-zone">${f.zone} · ${f.addr}</div>
+    </div>`;
+  row.addEventListener('click', () => toggleFac(f.num, row));
+  legendFacs.appendChild(row);
+});
+
+// ── LEGEND PANEL TOGGLE ───────────────────────────────────
+const panel   = document.getElementById('legend-panel');
+const overlay = document.getElementById('overlay');
+
+function openLegend() {
+  panel.classList.add('open');
+  overlay.classList.add('show');
+}
+function closeLegend() {
+  panel.classList.remove('open');
+  overlay.classList.remove('show');
+}
+function toggleLegend() {
+  panel.classList.contains('open') ? closeLegend() : openLegend();
+}
+
+document.getElementById('legend-toggle-btn').addEventListener('click', toggleLegend);
+overlay.addEventListener('click', closeLegend);
+
+// On desktop: don't use overlay
+const mqDesktop = window.matchMedia('(min-width: 768px)');
+function handleMq(e) {
+  if (e.matches) overlay.classList.remove('show');
+}
+mqDesktop.addEventListener('change', handleMq);
+
+// ── LOCATE ME ────────────────────────────────────────────
+document.getElementById('locate-btn').addEventListener('click', () => {
+  if (!navigator.geolocation) return alert('Geolokasjon støttes ikke av denne nettleseren.');
+  navigator.geolocation.getCurrentPosition(pos => {
+    const { latitude: lat, longitude: lng } = pos.coords;
+    const icon = L.divIcon({
+      html: '<div class="locate-pulse"></div>',
+      className: '', iconSize: [16,16], iconAnchor: [8,8]
+    });
+    L.marker([lat, lng], { icon }).addTo(map).bindPopup('📍 Din posisjon').openPopup();
+    map.setView([lat, lng], 14);
+  }, () => alert('Kunne ikke hente posisjon. Sjekk at nettleseren har tilgang.'));
+});
 </script>
 </body>
 </html>
